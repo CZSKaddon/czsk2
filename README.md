@@ -1,23 +1,20 @@
-# Webshare Stremio Addon
+# CZSK2 Stremio Addon
 
 <img src="src/static/logo.png" height="250px"/>
 
-This addon enables streaming movies and series from Webshare.cz.
+This addon enables streaming movies and series from CZSK2.
 
 The main principles are simplicity and low-maintenance. For this reason there is no video catalog
 which would provide high-quality content. This addon works by searching files directly on
-webshare.cz. Note this may and does produce incorrect results, but you can usually quickly find the
+CZSK2. Note this may and does produce incorrect results, but you can usually quickly find the
 correct streams.
 
 Feel free to open up issues if you find any issues.
 
 ## How can I use it?
 
-This addon is submitted to the community addon catalog. To install, just go Addons -> Community and search for `Webshare.cz`.
+This addon is submitted to the community addon catalog. To install, just go Addons -> Community and search for `CZSK2`.
 
-Alternative is to follow the link https://20317bf4c6c6-webshare-stremio-addon.baby-beamup.club/ and install from there.
-
-You need to have valid Webshare.cz credentials and a premium account.
 
 ## Development
 

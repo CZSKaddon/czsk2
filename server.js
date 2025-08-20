@@ -77,6 +77,31 @@ async function getWst(username, password) {
     }
 }
 
+// ++ NOVÁ, SPOLEHLIVĚJŠÍ FUNKCE PRO OVĚŘENÍ PŘIHLÁŠENÍ ++
+async function checkWebshareCredentials(username, password) {
+    if (!username || !password) return false;
+    try {
+        const saltResponse = await axios.get('https://webshare.cz/api/salt/', { params: { login: username } });
+        const saltMatch = saltResponse.data.match(/<salt>(.*?)<\/salt>/);
+        if (!saltMatch) return false;
+        
+        const salt = saltMatch[1];
+        const saltedPassword = crypto.createHash('sha1').update(salt + crypto.createHash('sha1').update(password).digest('hex')).digest('hex');
+
+        const loginData = `username_or_email=${encodeURIComponent(username)}&password=${saltedPassword}&keep_logged_in=1`;
+        
+        const loginResponse = await axios.post('https://webshare.cz/api/login/', loginData, {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
+
+        return loginResponse.data.includes('<status>OK</status>');
+    } catch (error) {
+        console.error('Webshare credential check failed:', error.message);
+        return false;
+    }
+}
+
+
 // Ověření admina
 function adminAuth(req, res, next) {
   const auth = req.headers.authorization || '';
@@ -186,28 +211,13 @@ app.post('/admin/add', adminAuth, async (req, res) => {
     res.redirect('/admin');
 });
 
-// ++ OPRAVENO: Spolehlivější testování Webshare údajů ++
+// ++ UPRAVENO: Použití nové, spolehlivější testovací funkce ++
 app.post('/admin/test-ws', adminAuth, async (req, res) => {
     const { wsUser, wsPass } = req.body;
-    const wst = await getWst(wsUser, wsPass);
-    if (!wst) {
-        // Pokud se nepodařilo ani vygenerovat token (např. špatné jméno), je to chyba
-        return res.redirect('/admin?ws_test=fail');
-    }
-    
-    try {
-        // Zkusíme se s vygenerovaným tokenem dotázat na uživatelská data
-        const checkResponse = await axios.get('https://webshare.cz/api/user_data/', { params: { wst: wst } });
-        if (checkResponse.data.includes('<status>OK</status>')) {
-            // Pokud API vrátí OK, přihlášení je platné
-            res.redirect('/admin?ws_test=success');
-        } else {
-            // Pokud API vrátí cokoliv jiného, přihlášení selhalo
-            res.redirect('/admin?ws_test=fail');
-        }
-    } catch (error) {
-        // Pokud dotaz na API selže (např. síťová chyba), je to také chyba
-        console.error('Webshare test failed:', error.message);
+    const isValid = await checkWebshareCredentials(wsUser, wsPass);
+    if (isValid) {
+        res.redirect('/admin?ws_test=success');
+    } else {
         res.redirect('/admin?ws_test=fail');
     }
 });

@@ -1,19 +1,29 @@
 {
-  "name": "stremio-addon-czsk2-private",
-  "version": "2.0.0",
-  "description": "Private addon for Stremio with CZSK2",
-  "main": "server.js",
+  "name": "stremio-addon-webshare",
+  "version": "0.5.3",
+  "description": "Simple webshare.cz search and streaming.",
   "scripts": {
-    "start": "node server.js"
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js --dev",
+    "test": "jest",
+    "format": "prettier . --write",
+    "check-formatting": "prettier . --check"
   },
   "dependencies": {
-    "axios": "^0.24.0",
-    "bcrypt": "^5.1.0",
-    "body-parser": "^1.20.2",
-    "express": "^4.18.2",
-    "mongoose": "^7.5.0",
-    "stremio-addon-sdk": "^1.6.10",
-    "uuid": "^9.0.0",
-    "crypto": "^1.0.1"
+    "express": "^5.1.0",
+    "filesize": "^10.1.0",
+    "form-urlencoded": "^6.1.4",
+    "freekeys": "^0.0.4",
+    "nano-md5": "^1.0.5",
+    "needle": "^3.3.1",
+    "parse-torrent-title": "^1.4.0",
+    "sha1": "^1.1.1",
+    "stremio-addon-sdk": "1.6.x",
+    "string-similarity": "^4.0.4"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "prettier": "3.5.3",
+    "supertest": "^7.1.1"
   }
 }

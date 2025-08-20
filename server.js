@@ -70,13 +70,7 @@ async function getWst(username, password) {
         const salt = saltMatch[1];
         const hashedPassword = crypto.createHash('sha1').update(password).digest('hex');
         const finalHash = crypto.createHash('sha1').update(salt + hashedPassword).digest('hex');
-        
-        // Ověříme, zda je token platný
-        const checkResponse = await axios.get('https://webshare.cz/api/user_data/', { params: { wst: finalHash } });
-        if (checkResponse.data.includes('<status>OK</status>')) {
-            return finalHash;
-        }
-        return null;
+        return finalHash;
     } catch (error) {
         console.error('Error getting WST:', error.message);
         return null;
@@ -192,15 +186,32 @@ app.post('/admin/add', adminAuth, async (req, res) => {
     res.redirect('/admin');
 });
 
+// ++ OPRAVENO: Spolehlivější testování Webshare údajů ++
 app.post('/admin/test-ws', adminAuth, async (req, res) => {
     const { wsUser, wsPass } = req.body;
     const wst = await getWst(wsUser, wsPass);
-    if (wst) {
-        res.redirect('/admin?ws_test=success');
-    } else {
+    if (!wst) {
+        // Pokud se nepodařilo ani vygenerovat token (např. špatné jméno), je to chyba
+        return res.redirect('/admin?ws_test=fail');
+    }
+    
+    try {
+        // Zkusíme se s vygenerovaným tokenem dotázat na uživatelská data
+        const checkResponse = await axios.get('https://webshare.cz/api/user_data/', { params: { wst: wst } });
+        if (checkResponse.data.includes('<status>OK</status>')) {
+            // Pokud API vrátí OK, přihlášení je platné
+            res.redirect('/admin?ws_test=success');
+        } else {
+            // Pokud API vrátí cokoliv jiného, přihlášení selhalo
+            res.redirect('/admin?ws_test=fail');
+        }
+    } catch (error) {
+        // Pokud dotaz na API selže (např. síťová chyba), je to také chyba
+        console.error('Webshare test failed:', error.message);
         res.redirect('/admin?ws_test=fail');
     }
 });
+
 
 app.post('/admin/revoke', adminAuth, async (req, res) => {
   const { username, deviceMac } = req.body;

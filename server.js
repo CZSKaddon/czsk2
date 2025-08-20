@@ -70,7 +70,13 @@ async function getWst(username, password) {
         const salt = saltMatch[1];
         const hashedPassword = crypto.createHash('sha1').update(password).digest('hex');
         const finalHash = crypto.createHash('sha1').update(salt + hashedPassword).digest('hex');
-        return finalHash;
+        
+        // Ověříme, zda je token platný
+        const checkResponse = await axios.get('https://webshare.cz/api/user_data/', { params: { wst: finalHash } });
+        if (checkResponse.data.includes('<status>OK</status>')) {
+            return finalHash;
+        }
+        return null;
     } catch (error) {
         console.error('Error getting WST:', error.message);
         return null;
@@ -100,6 +106,15 @@ app.get('/admin', adminAuth, async (req, res) => {
   const tokens = await Token.find().lean();
   const host = req.headers['x-forwarded-host'] || req.headers.host;
   const protocol = req.headers['x-forwarded-proto'] || 'https';
+  const testResult = req.query.ws_test;
+
+  let testMessage = '';
+  if (testResult === 'success') {
+      testMessage = '<p style="color: green;">Webshare login successful!</p>';
+  } else if (testResult === 'fail') {
+      testMessage = '<p style="color: red;">Webshare login failed. Check credentials.</p>';
+  }
+
 
   let rowsHtml = '';
   users.forEach(u => {
@@ -143,6 +158,14 @@ app.get('/admin', adminAuth, async (req, res) => {
         <label>Webshare Password:<br><input type="password" name="wsPass"></label><br>
         <button>Create / Add Device</button>
       </form>
+      <hr>
+      <h2>Test Webshare Credentials</h2>
+      ${testMessage}
+      <form method="POST" action="/admin/test-ws">
+        <label>Webshare Username:<br><input name="wsUser" required></label><br>
+        <label>Webshare Password:<br><input type="password" name="wsPass" required></label><br>
+        <button>Test Login</button>
+      </form>
       <h2>Existing Users & Devices</h2>
       <table><tr><th>User</th><th>Expires</th><th>Device MAC</th><th>Webshare?</th><th>Install Link</th><th>Actions</th></tr>${rowsHtml}</table>
     </body></html>`;
@@ -168,6 +191,17 @@ app.post('/admin/add', adminAuth, async (req, res) => {
 
     res.redirect('/admin');
 });
+
+app.post('/admin/test-ws', adminAuth, async (req, res) => {
+    const { wsUser, wsPass } = req.body;
+    const wst = await getWst(wsUser, wsPass);
+    if (wst) {
+        res.redirect('/admin?ws_test=success');
+    } else {
+        res.redirect('/admin?ws_test=fail');
+    }
+});
+
 app.post('/admin/revoke', adminAuth, async (req, res) => {
   const { username, deviceMac } = req.body;
   await Token.deleteOne({ username, deviceId: deviceMac });
@@ -195,7 +229,6 @@ app.use(MOUNT_PATH, async (req, res, next) => {
     
     // Předáme WST do handleru v addon.js přes config
     if (entry.wst) {
-        // SDK očekává, že config bude v URL, my ho přidáme do parametrů
         req.params.config = JSON.stringify({ wstToken: entry.wst });
     }
     
